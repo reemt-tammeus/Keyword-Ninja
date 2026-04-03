@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyword Ninja - AP Trainer</title>
+    <style>
+        :root { --primary: #1a73e8; --success: #28a745; --warning: #ff9800; --error: #d93025; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        
+        /* Logo Styling */
+        #logo { position: fixed; top: 10px; left: 10px; width: 80px; height: auto; z-index: 1000; }
+        
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; position: relative; margin-top: 40px; }
+        h1 { font-size: 1.3rem; color: #333; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .original-sentence { background: #e8f0fe; padding: 15px; border-radius: 8px; font-weight: 500; color: #1967d2; margin-bottom: 15px; border-left: 4px solid var(--primary); }
+        .keyword-box { text-align: center; margin: 20px 0; }
+        .keyword { font-weight: 800; font-size: 1.2rem; text-transform: uppercase; border: 2px dashed #ccc; padding: 8px 20px; display: inline-block; background: #fff; }
+        .input-area { line-height: 2.2; margin-top: 25px; font-size: 1.1rem; }
+        input { border: none; border-bottom: 2px solid var(--primary); padding: 2px 8px; font-size: 1.1rem; width: 250px; outline: none; background: #fffde7; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .btn-check { background: var(--primary); color: white; }
+        .btn-next { background: var(--success); color: white; display: none; }
+        .feedback { margin-top: 20px; padding: 15px; border-radius: 6px; display: none; }
+        .visible { display: block; }
+        .score-screen { text-align: center; display: none; }
+    </style>
+</head>
+<body>
+
+<img src="Keyword Ninja.png" id="logo" alt="Logo">
+
+<div class="container">
+    <div id="game-ui">
+        <h1 id="set-info">Set Progress: 1 / 5</h1>
+        <div class="original-sentence" id="orig"></div>
+        <div class="keyword-box"><span class="keyword" id="key"></span></div>
+        <div class="input-area">
+            <span id="prefix"></span>
+            <input type="text" id="user-input" autocomplete="off" spellcheck="false">
+            <span id="suffix"></span>
+        </div>
+        <button class="btn-check" id="check-btn" onclick="checkAnswer()">Prüfen</button>
+        <button class="btn-next" id="next-btn" onclick="processNext()">Nächste Aufgabe ⮕</button>
+        <div id="feedback" class="feedback"></div>
+    </div>
+
+    <div id="score-screen" class="score-screen">
+        <h2>Your Set Score</h2>
+        <div id="score-display" style="font-size: 3rem; font-weight: bold; margin: 20px 0;">0 / 5</div>
+        <p style="font-size: 1.2rem; margin-bottom: 30px;">
+            Well done! Would you like to do another set of 5 sentences?
+        </p>
+        <button class="btn-check" onclick="startNewSet()">Yes, next set!</button>
+        <button style="background: #ccc;" onclick="location.reload()">No, I'm done.</button>
+    </div>
+</div>
+
+<script>
+    // Die Sätze (Hier die Liste aus dem vorherigen Schritt einfügen)
+    const rawTasks = [
+        { orig: "In 1614 the King’s Men Playing Company rebuilt the theatre.", key: "WAS", pre: "In 1614 the theatre", suf: "the King’s Men Playing Company.", ideal: ["was rebuilt by"] },
+        { orig: "The Puritans closed it down as they didn't enjoy watching such entertainment.", key: "WORTH", pre: "The Puritans closed it down because for them such entertainment", suf: ".", ideal: ["was not worth watching"] },
+        { orig: "Not even one per cent of the species... have been analysed.", key: "THAN", pre: "", suf: "of the species of tropical plants have been analysed.", ideal: ["Less than one per cent"] },
+        { orig: "Some say a Welsh king wished that his soldiers wore the leek in a battle.", key: "WANTED", pre: "Some say a Welsh king", suf: "wear the leek in a battle.", ideal: ["wanted his soldiers to"] },
+        { orig: "Project Gutenberg is a digital library founded by Hart.", key: "AS", pre: "Free information advocate Michael Hart", suf: "a digital library.", ideal: ["founded Project Gutenberg as"] },
+        { orig: "Aborigines still suffer from the forced removal.", key: "DUE", pre: "Aborigines still suffer", suf: "of their children.", ideal: ["due to the forced removal"] }
+        // ... (weitere 100 Sätze hier einfügen)
+    ];
+
+    let allTasks = [];
+    let currentTaskIdx = 0;
+    let setCounter = 0;
+    let setCorrect = 0;
+
+    function shuffle(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    function init() {
+        allTasks = shuffle([...rawTasks]);
+        startNewSet();
+    }
+
+    function startNewSet() {
+        setCounter = 0;
+        setCorrect = 0;
+        document.getElementById('score-screen').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'block';
+        loadTask();
+    }
+
+    function loadTask() {
+        const t = allTasks[currentTaskIdx];
+        document.getElementById('set-info').innerText = `Set Progress: ${setCounter + 1} / 5`;
+        document.getElementById('orig').innerText = t.orig;
+        document.getElementById('key').innerText = t.key;
+        document.getElementById('prefix').innerText = t.pre;
+        document.getElementById('suffix').innerText = t.suf;
+        document.getElementById('user-input').value = "";
+        document.getElementById('user-input').disabled = false;
+        document.getElementById('feedback').style.display = 'none';
+        document.getElementById('check-btn').style.display = 'block';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('user-input').focus();
+    }
+
+    function checkAnswer() {
+        const t = allTasks[currentTaskIdx];
+        const val = document.getElementById('user-input').value.trim();
+        const fb = document.getElementById('feedback');
+        
+        const isCorrect = t.ideal.some(s => s.toLowerCase() === val.toLowerCase());
+        
+        if (isCorrect) {
+            setCorrect++;
+            fb.innerText = "✅ Perfect!";
+            fb.style.backgroundColor = "#d4edda";
+            fb.style.color = "#155724";
+        } else {
+            fb.innerText = "❌ Not quite. The correct answer was: " + t.ideal[0];
+            fb.style.backgroundColor = "#f8d7da";
+            fb.style.color = "#721c24";
+        }
+        
+        fb.style.display = 'block';
+        document.getElementById('check-btn').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'block';
+        document.getElementById('user-input').disabled = true;
+    }
+
+    function processNext() {
+        setCounter++;
+        currentTaskIdx = (currentTaskIdx + 1) % allTasks.length;
+        
+        if (setCounter >= 5) {
+            showScore();
+        } else {
+            loadTask();
+        }
+    }
+
+    function showScore() {
+        document.getElementById('game-ui').style.display = 'none';
+        document.getElementById('score-screen').style.display = 'block';
+        document.getElementById('score-display').innerText = `${setCorrect} / 5`;
+    }
+
+    init();
+</script>
+</body>
+</html>
