@@ -16,7 +16,10 @@
             --on-primary: #000000;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+        }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -26,6 +29,11 @@
             display: flex;
             justify-content: center;
             overflow-x: hidden;
+            
+            /* Verhindert, dass beim Tippen auf den Bildschirm aus Versehen Text markiert wird (Mobile) */
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
         }
 
         /* 1. Vergrößertes Logo */
@@ -123,6 +131,10 @@
             color: white;
             outline: none;
             transition: border-color 0.3s;
+            
+            /* Erlaubt das Markieren von Text wieder speziell im Input-Feld */
+            -webkit-user-select: text;
+            user-select: text;
         }
 
         input:focus {
@@ -147,6 +159,7 @@
             color: #bbb;
             font-style: italic;
             margin-top: 10px;
+            transition: color 0.3s;
         }
 
         /* Buttons nur noch für den End-Screen benötigt */
@@ -172,6 +185,12 @@
             display: none;
             font-weight: 600;
             text-align: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .score-screen {
@@ -209,7 +228,7 @@
 
         <div class="transformation-area">
             <span id="prefix"></span>
-            <input type="text" id="user-input" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="Your answer...">
+            <input type="text" id="user-input" autocomplete="off" spellcheck="false" autocapitalize="off" enterkeyhint="done" placeholder="Your answer...">
             <span id="suffix"></span>
         </div>
 
@@ -231,7 +250,6 @@
 </div>
 
 <script>
-    // Die Sätze (Hier die vollständige Liste einfügen)
     const db = [
         { orig: "In 1614 the King’s Men Playing Company rebuilt the theatre.", key: "WAS", pre: "In 1614 the theatre", suf: "the King’s Men Playing Company.", ideal: ["was rebuilt by"] },
         { orig: "The Puritans closed it down as they didn't enjoy watching such entertainment.", key: "WORTH", pre: "The Puritans closed it down because for them such entertainment", suf: ".", ideal: ["was not worth watching", "wasn't worth watching"] },
@@ -246,7 +264,7 @@
     let currentSet = [];
     let currentIdx = 0;
     let score = 0;
-    let isShowingSolution = false; // Neuer Status für die Enter-Logik
+    let isShowingSolution = false; 
 
     function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
 
@@ -273,10 +291,13 @@
         
         document.getElementById('feedback').style.display = 'none';
         document.getElementById('action-hint').innerText = 'Press Enter to check the answer';
+        document.getElementById('action-hint').style.color = '#bbb';
         
         isShowingSolution = false;
         updateWordCount();
-        inp.focus();
+        
+        // Timeout nötig für iOS, um Fokus nach DOM-Änderungen korrekt zu setzen
+        setTimeout(() => inp.focus(), 50);
     }
 
     function updateWordCount() {
@@ -289,9 +310,8 @@
 
     document.getElementById('user-input').addEventListener('input', updateWordCount);
 
-    // Globaler Event-Listener für die Enter-Taste
+    // KEYBOARD LISTENER (Desktop & Mobile Tastatur "Fertig"-Button)
     document.addEventListener('keydown', function(event) {
-        // Nur reagieren, wenn wir uns im Spiel befinden (nicht im Score-Screen)
         if (event.key === 'Enter' && document.getElementById('game-ui').style.display !== 'none') {
             if (!isShowingSolution) {
                 checkAnswer();
@@ -301,9 +321,18 @@
         }
     });
 
+    // TOUCH/CLICK LISTENER (Erlaubt auf Mobile ein simples "Tippen" zum Weitergehen)
+    document.addEventListener('click', function(event) {
+        // Nur reagieren, wenn die Lösung bereits angezeigt wird und man ins Leere klickt
+        if (isShowingSolution && document.getElementById('game-ui').style.display !== 'none') {
+            nextTask();
+        }
+    });
+
     function checkAnswer() {
         const t = currentSet[currentIdx];
-        const val = document.getElementById('user-input').value.trim();
+        const inp = document.getElementById('user-input');
+        const val = inp.value.trim();
         const words = val.split(/\s+/).filter(w => w !== "");
         
         if (!val.toLowerCase().includes(t.key.toLowerCase())) {
@@ -324,10 +353,14 @@
             showFeedback(`❌ Wrong. Solution: ${t.ideal[0]}`, "#999");
         }
 
-        // Eingabefeld sperren und Text für den nächsten Schritt anpassen
-        document.getElementById('user-input').disabled = true;
-        document.getElementById('action-hint').innerText = 'Press Enter to continue';
-        isShowingSolution = true;
+        inp.disabled = true;
+        inp.blur(); // WICHTIG FÜR MOBILE: Schließt die virtuelle Tastatur, damit man die Lösung sehen kann!
+        
+        document.getElementById('action-hint').innerText = 'Press Enter or tap anywhere to continue';
+        document.getElementById('action-hint').style.color = 'var(--secondary)';
+        
+        // Kurzer Delay, damit der Touch-Listener nicht sofort den gleichen Klick als "Weiter" interpretiert
+        setTimeout(() => { isShowingSolution = true; }, 100);
     }
 
     function showFeedback(msg, color) {
