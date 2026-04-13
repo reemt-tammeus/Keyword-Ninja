@@ -201,6 +201,13 @@
             margin: 20px 0;
             text-shadow: 0 0 25px rgba(187, 134, 252, 0.5);
         }
+        
+        #loading-screen {
+            text-align: center;
+            padding-top: 80px;
+            color: var(--secondary);
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -208,11 +215,13 @@
 <img src="Keyword Ninja.png" id="logo" alt="Ninja Logo">
 
 <div class="app-container">
-    <header>
+    <div id="loading-screen">Daten werden geladen...</div>
+
+    <header style="display:none;" id="main-header">
         <div id="progress-header">SET PROGRESS: 1 / 5</div>
     </header>
 
-    <div id="game-ui" class="task-card">
+    <div id="game-ui" class="task-card" style="display:none;">
         <p class="instruction">Transform using 2 to 5 words. Do not change the keyword.</p>
         
         <div class="original-sentence" id="orig">...</div>
@@ -257,23 +266,12 @@
 </div>
 
 <script>
-    const db = [
-        { orig: "In 1614 the King’s Men Playing Company rebuilt the theatre.", key: "WAS", pre: "In 1614 the theatre", suf: "the King’s Men Playing Company.", ideal: ["was rebuilt by"] },
-        { orig: "The Puritans closed it down as they didn't enjoy watching such entertainment.", key: "WORTH", pre: "The Puritans closed it down because for them such entertainment", suf: ".", ideal: ["was not worth watching", "wasn't worth watching"] },
-        { orig: "The design team made sure it would look like the original.", key: "ORDER", pre: "The design team used various sources of information", suf: "it would look like the original.", ideal: ["in order to make sure"] },
-        { orig: "Modern extras like fire exits had to be included.", key: "NECESSARY", pre: "Although designers tried to keep to old building techniques,", suf: "modern extras like fire exits.", ideal: ["it was necessary to include"] },
-        { orig: "The first time visitors came to the new Globe Theatre was in 1997.", key: "COME", pre: "Since 1997", suf: "to the new Globe Theatre.", ideal: ["visitors have come"] },
-        { orig: "Mandela did not let hatred get the better of him.", key: "INSTEAD", pre: "", suf: "hatred get the better of him, Mandela continued to fight.", ideal: ["Instead of letting"] },
-        { orig: "Tell your friends they mustn’t feed wildlife.", key: "ALLOWED", pre: "Tell your friends that", suf: "feed wildlife.", ideal: ["they are not allowed to"] },
-        { orig: "Project Gutenberg is a digital library founded by Michael Hart.", key: "AS", pre: "Free information advocate Michael Hart", suf: "a digital library.", ideal: ["founded Project Gutenberg as"] }
-    ];
-
+    let db = []; // Wird nun dynamisch aus der JSON geladen
     let currentSet = [];
     let currentIdx = 0;
     let score = 0;
     let isShowingSolution = false; 
 
-    // iOS/Android Text-Normalisierung
     function normalizeText(text) {
         return text.toLowerCase()
                    .replace(/[\u2018\u2019´`]/g, "'")
@@ -389,7 +387,26 @@
         }
     }
 
-    resetSet();
+    // App Initialisierung: Daten aus data.json laden
+    async function initApp() {
+        try {
+            const response = await fetch('data.json');
+            if (!response.ok) throw new Error('Netzwerk-Antwort war nicht ok');
+            db = await response.json();
+            
+            // Ladebildschirm ausblenden, Spiel anzeigen
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('main-header').style.display = 'block';
+            
+            resetSet();
+        } catch (error) {
+            console.error('Fehler beim Laden der Daten:', error);
+            document.getElementById('loading-screen').innerHTML = '<span style="color:var(--error);">Fehler beim Laden der Sätze. Bitte lade die Seite neu.</span>';
+        }
+    }
+
+    // Start
+    initApp();
 </script>
 </body>
 </html>
