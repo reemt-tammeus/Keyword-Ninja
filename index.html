@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Keyword Ninja - Grand Master</title>
+    <title>Keyword Ninja</title>
     <style>
         :root {
             --bg-dark: #121212;
@@ -30,18 +30,16 @@
             justify-content: center;
             overflow-x: hidden;
             
-            /* Verhindert, dass beim Tippen auf den Bildschirm aus Versehen Text markiert wird (Mobile) */
             -webkit-user-select: none;
             user-select: none;
             touch-action: manipulation;
         }
 
-        /* 1. Vergrößertes Logo */
         #logo {
             position: absolute;
             top: 20px;
             left: 20px;
-            width: 150px; /* Deutlich vergrößert */
+            width: 150px;
             height: auto;
             z-index: 10;
             filter: drop-shadow(0 0 10px rgba(187, 134, 252, 0.4));
@@ -52,14 +50,13 @@
             max-width: 500px;
             min-height: 100vh;
             background: var(--bg-dark);
-            /* Mehr Padding oben, damit das große Logo Platz hat */
             padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
             display: flex;
             flex-direction: column;
         }
 
         header {
-            margin-top: 120px; /* Platz für das große Logo schaffen */
+            margin-top: 120px;
             text-align: right;
             border-bottom: 1px solid #333;
             padding-bottom: 10px;
@@ -124,7 +121,7 @@
             display: block;
             margin: 15px 0;
             padding: 16px;
-            font-size: 16px; /* Wichtig gegen iOS-Auto-Zoom */
+            font-size: 16px;
             border: 2px solid #444;
             border-radius: 12px;
             background: #2c2c2c;
@@ -132,7 +129,6 @@
             outline: none;
             transition: border-color 0.3s;
             
-            /* Erlaubt das Markieren von Text wieder speziell im Input-Feld */
             -webkit-user-select: text;
             user-select: text;
         }
@@ -162,7 +158,6 @@
             transition: color 0.3s;
         }
 
-        /* Buttons nur noch für den End-Screen benötigt */
         button {
             width: 100%;
             padding: 20px;
@@ -228,7 +223,19 @@
 
         <div class="transformation-area">
             <span id="prefix"></span>
-            <input type="text" id="user-input" autocomplete="off" spellcheck="false" autocapitalize="off" enterkeyhint="done" placeholder="Your answer...">
+            
+            <input type="text" 
+                   id="user-input" 
+                   autocomplete="nope" 
+                   autocorrect="off" 
+                   autocapitalize="none" 
+                   spellcheck="false" 
+                   data-form-type="other" 
+                   data-gramm="false" 
+                   data-lpignore="true" 
+                   enterkeyhint="done" 
+                   placeholder="Your answer...">
+                   
             <span id="suffix"></span>
         </div>
 
@@ -266,6 +273,14 @@
     let score = 0;
     let isShowingSolution = false; 
 
+    // iOS/Android Text-Normalisierung bleibt aktiv als Sicherheitsnetz
+    function normalizeText(text) {
+        return text.toLowerCase()
+                   .replace(/[\u2018\u2019´`]/g, "'")
+                   .replace(/[.!?;]$/, "")
+                   .trim();
+    }
+
     function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
 
     function resetSet() {
@@ -296,7 +311,6 @@
         isShowingSolution = false;
         updateWordCount();
         
-        // Timeout nötig für iOS, um Fokus nach DOM-Änderungen korrekt zu setzen
         setTimeout(() => inp.focus(), 50);
     }
 
@@ -310,7 +324,6 @@
 
     document.getElementById('user-input').addEventListener('input', updateWordCount);
 
-    // KEYBOARD LISTENER (Desktop & Mobile Tastatur "Fertig"-Button)
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Enter' && document.getElementById('game-ui').style.display !== 'none') {
             if (!isShowingSolution) {
@@ -321,21 +334,16 @@
         }
     });
 
-    // TOUCH/CLICK LISTENER (Erlaubt auf Mobile ein simples "Tippen" zum Weitergehen)
-    document.addEventListener('click', function(event) {
-        // Nur reagieren, wenn die Lösung bereits angezeigt wird und man ins Leere klickt
-        if (isShowingSolution && document.getElementById('game-ui').style.display !== 'none') {
-            nextTask();
-        }
-    });
-
     function checkAnswer() {
         const t = currentSet[currentIdx];
         const inp = document.getElementById('user-input');
-        const val = inp.value.trim();
-        const words = val.split(/\s+/).filter(w => w !== "");
+        const rawVal = inp.value.trim();
+        const words = rawVal.split(/\s+/).filter(w => w !== "");
         
-        if (!val.toLowerCase().includes(t.key.toLowerCase())) {
+        const valNorm = normalizeText(rawVal);
+        const keyNorm = normalizeText(t.key);
+        
+        if (!valNorm.includes(keyNorm)) {
             showFeedback(`Keyword "${t.key}" missing!`, "var(--error)");
             return;
         }
@@ -344,7 +352,7 @@
             return;
         }
 
-        const isCorrect = t.ideal.some(s => s.toLowerCase().replace(/[.!?;]$/, "") === val.toLowerCase().replace(/[.!?;]$/, ""));
+        const isCorrect = t.ideal.some(s => normalizeText(s) === valNorm);
         
         if (isCorrect) {
             score++;
@@ -354,12 +362,11 @@
         }
 
         inp.disabled = true;
-        inp.blur(); // WICHTIG FÜR MOBILE: Schließt die virtuelle Tastatur, damit man die Lösung sehen kann!
+        inp.blur(); 
         
-        document.getElementById('action-hint').innerText = 'Press Enter or tap anywhere to continue';
+        document.getElementById('action-hint').innerText = 'Press Enter to continue';
         document.getElementById('action-hint').style.color = 'var(--secondary)';
         
-        // Kurzer Delay, damit der Touch-Listener nicht sofort den gleichen Klick als "Weiter" interpretiert
         setTimeout(() => { isShowingSolution = true; }, 100);
     }
 
