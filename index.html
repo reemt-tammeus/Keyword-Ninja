@@ -158,6 +158,7 @@
             transition: color 0.3s;
         }
 
+        /* Buttons gibt es nur noch für den End-Screen! */
         button {
             width: 100%;
             padding: 20px;
@@ -273,7 +274,7 @@
     let score = 0;
     let isShowingSolution = false; 
 
-    // iOS/Android Text-Normalisierung bleibt aktiv als Sicherheitsnetz
+    // iOS/Android Text-Normalisierung
     function normalizeText(text) {
         return text.toLowerCase()
                    .replace(/[\u2018\u2019´`]/g, "'")
